@@ -31,12 +31,15 @@ export function useRoot() {
     const createRoot = () => new Promise((resolve, reject) => {
         createRootEvent(config).then((_event) => {
             setRootEvent(_event);
+            rootEventRef.current = _event;
             resolve(_event);
         })
     });
 
     const refreshComments = () => {
-        getComments(config, rootEventRef.current, true).then((_comments) => {
+        const root = rootEventRef.current;
+        if (!root) return;
+        getComments(config, root, true).then((_comments) => {
             setComments(_comments);
         });
     };
