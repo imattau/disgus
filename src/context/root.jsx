@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { getRootEvent, createRootEvent, getComments } from '../helpers/nostr';
 
 export const RootContext = React.createContext({});
@@ -8,16 +8,15 @@ export const RootProvider = ({ config, children }) => {
     const [comments, setComments] = useState(false);
 
     useEffect(() => {
-        if (!rootEvent) {
-            getRootEvent(config).then((_event) => {
+        getRootEvent(config).then((_event) => {
+            if (_event) {
                 setRootEvent(_event);
-            });
-        } else {
-            getComments(config, rootEvent).then((_comments) => {
-                setComments(_comments);
-            });
-        }
-    }, [rootEvent]);
+                getComments(config, _event).then((_comments) => {
+                    setComments(_comments);
+                });
+            }
+        });
+    }, []);
 
     return <RootContext.Provider value={{ config, rootEvent, setRootEvent, comments, setComments }}>{children}</RootContext.Provider>;
 }
@@ -26,6 +25,8 @@ export const RootConsumer = RootContext.Consumer;
 
 export function useRoot() {
     const { config, rootEvent, setRootEvent, comments, setComments } = useContext(RootContext);
+    const rootEventRef = useRef(rootEvent);
+    rootEventRef.current = rootEvent;
 
     const createRoot = () => new Promise((resolve, reject) => {
         createRootEvent(config).then((_event) => {
@@ -35,7 +36,7 @@ export function useRoot() {
     });
 
     const refreshComments = () => {
-        getComments(config, rootEvent, true).then((_comments) => {
+        getComments(config, rootEventRef.current, true).then((_comments) => {
             setComments(_comments);
         });
     };
