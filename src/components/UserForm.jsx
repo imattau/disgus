@@ -75,7 +75,7 @@ export default function UserForm() {
                     </div>
                     ) : (
                     <div className="py-1">
-                        <Menu.Item>
+                        <Menu.Item key="passkey">
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); signInPasskey(); }}
@@ -88,7 +88,7 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <Menu.Item>
+                        <Menu.Item key="import">
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); importPasskeyFromNsec(); }}
@@ -101,23 +101,21 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <div className="border-t border-gray-200 my-1" />
-                        {extensionAvailable && (
-                        <Menu.Item>
-                            {({ active }) => (
+                        <div key="divider" className="border-t border-gray-200 my-1" />
+                        <Menu.Item key="extension">
+                        {({ active }) => (
                             <a
-                                onClick={(e) => { e.preventDefault(); signInExtension(); }}
-                                className={classNames(
-                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
-                                    'block px-4 py-2 text-sm'
-                                )}
-                            >
-                                Extension (NIP-07)
-                            </a>
+                            onClick={(e) => { e.preventDefault(); signInExtension(); }}
+                            className={classNames(
+                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                'block px-4 py-2 text-sm'
                             )}
-                        </Menu.Item>
+                            >
+                            Extension (NIP-07)
+                            </a>
                         )}
-                        <Menu.Item>
+                        </Menu.Item>
+                        <Menu.Item key="key">
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); signInWithKey(); }}
@@ -130,7 +128,7 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <Menu.Item>
+                        <Menu.Item key="rnd">
                         {({ active }) => (
                             <a
                             onClick={(e) => {e.preventDefault(); signInRandom(); }}
