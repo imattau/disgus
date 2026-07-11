@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { relayInit, getEventHash, getBlankEvent, generatePrivateKey, getPublicKey, signEvent } from 'nostr-tools';
+import { getEventHash, generatePrivateKey, getPublicKey, signEvent } from 'nostr-tools';
 import { initPool, getPubkey } from '../helpers/nostr';
 import { RootContext } from './root';
 
@@ -40,8 +40,8 @@ export function useUser() {
         if (window.nostr) {
             window.nostr.getPublicKey().then((pubkey) => {
                 getPubkey(pubkey, relays).then((_user) => {
-                    localStorage.setItem(cacheKey, JSON.stringify(_user));
-                    setUser(_user);
+                    localStorage.setItem(cacheKey, JSON.stringify({ ..._user, pubkey }));
+                    setUser({ ..._user, pubkey });
                 });
             });
         } else {
@@ -49,12 +49,9 @@ export function useUser() {
             let pubkey = getPublicKey(privateKey);
 
             if (pubkey) {
-                getPubkey(publicKey, relays).then((_user) => {
-                    localStorage.setItem(cacheKey, JSON.stringify(_user));
-                    setUser({
-                        ...privateKey,
-                        _user
-                    });
+                getPubkey(pubkey, relays).then((_user) => {
+                    localStorage.setItem(cacheKey, JSON.stringify({ ..._user, pubkey, privateKey }));
+                    setUser({ ..._user, pubkey, privateKey });
                 });
             } else {
                 alert('Incorrect key.')
@@ -80,7 +77,7 @@ export function useUser() {
             about: 'Random Guest'
         };
 
-        const event = getBlankEvent();
+        const event = {};
 
         event.kind = 0;
         event.pubkey = publicKey;

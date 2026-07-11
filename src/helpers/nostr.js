@@ -12,6 +12,7 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
   let comments = [];
   let since = 0;
   let cached = {};
+  let returned = false;
 
   if (localStorage.getItem(`e:${rootEvent.id}`)) {
     cached = JSON.parse(localStorage.getItem(`e:${rootEvent.id}`));
@@ -19,11 +20,11 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
     comments = cached.comments;
     if (comments && !force) {
       resolve(comments);
+      return;
     }
     since = force ? 0 : cached.updated_at;
   }
 
-  let returned = false;
   pool.map(async (conn) => {    
     try {
       await conn.connect()
@@ -45,7 +46,8 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
       });
 
       sub.on('eose', () => {
-        // remove dupes
+        if (returned) return;
+
         const _comments = comments.filter((value, index, self) =>
                         index === self.findIndex((t) => (
                           t.id === value.id
@@ -59,7 +61,7 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
             updated_at: now,
             comments: _comments
           }));
-          cached.update_at = now;
+          cached.updated_at = now;
           resolve(_comments);
           returned = true;
         }
@@ -73,6 +75,7 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
 
 export const getPubkey = (pubkey, relays) => new Promise((resolve, reject) => {
   let user = { pubkey, created_at: 0 };
+  let returned = false;
 
   if (localStorage.getItem(`p:${pubkey}`)) {
     user = JSON.parse(localStorage.getItem(`p:${pubkey}`));
@@ -95,6 +98,8 @@ export const getPubkey = (pubkey, relays) => new Promise((resolve, reject) => {
     ]);
 
     sub.on('event', (_event) => {
+      if (returned) return;
+
       if (!user.created_at || _event.created_at > user.created_at) {
         user = {
           ...user,
@@ -103,6 +108,7 @@ export const getPubkey = (pubkey, relays) => new Promise((resolve, reject) => {
         }
         localStorage.setItem(`p:${pubkey}`, JSON.stringify(user));
         resolve(user);
+        returned = true;
       }
     });
 
@@ -147,11 +153,43 @@ export const createRootEvent = (config, user) => new Promise((resolve, reject) =
 });
 
 export const getRootEvent = (config) => new Promise(async (resolve, reject) => {
-  const { pubkey, canonical, relays } = config;
+  const { pubkey, canonical, relays, event_id } = config;
   const pool = initPool(relays);
+  let returned = false;
+
+  if (event_id && localStorage.getItem(`e:${event_id}`)) {
+    const cached = JSON.parse(localStorage.getItem(`e:${event_id}`));
+    localStorage.setItem(`r:${canonical}`, JSON.stringify(cached));
+    resolve(cached);
+    return;
+  }
 
   if (localStorage.getItem(`r:${canonical}`)) {
     resolve(JSON.parse(localStorage.getItem(`r:${canonical}`)));
+    return;
+  }
+
+  if (event_id) {
+    pool.map(async (conn) => {
+      try {
+        await conn.connect();
+        const sub = conn.sub([{ ids: [event_id], kinds: [1], limit: 1 }]);
+
+        sub.on('event', (event) => {
+          if (returned) return;
+          localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
+          resolve(event);
+          returned = true;
+        });
+
+        sub.on('eose', () => {
+          sub.unsub();
+          conn.close();
+        });
+      } catch (err) {
+        console.log(err?.message);
+      }
+    });
     return;
   }
 
@@ -162,25 +200,31 @@ export const getRootEvent = (config) => new Promise(async (resolve, reject) => {
   }
 
   pool.map(async (conn, i) => {
-    await conn.connect();
-  
-    const sub = conn.sub([
-      {
-        limit: 1,
-        kinds: [1],
-        ...filter
-      }
-    ]);
+    try {
+      await conn.connect();
+    
+      const sub = conn.sub([
+        {
+          limit: 1,
+          kinds: [1],
+          ...filter
+        }
+      ]);
 
-    sub.on('event', (event) => {
-      localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
-      resolve(event);
-    });
+      sub.on('event', (event) => {
+        if (returned) return;
+        localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
+        resolve(event);
+        returned = true;
+      });
 
-    sub.on('eose', () => {
-      sub.unsub();
-      conn.close();
-    });
+      sub.on('eose', () => {
+        sub.unsub();
+        conn.close();
+      });
+    } catch (err) {
+      console.log(err?.message);
+    }
   });
 });
 
@@ -207,6 +251,7 @@ export const postComment = (event, user, relays) => new Promise(async(resolve, r
   let returned = false;
 
   pool.map(async (conn) => {
+    try {
       await conn.connect();
       const publisher = conn.publish(event);
 
@@ -218,7 +263,10 @@ export const postComment = (event, user, relays) => new Promise(async(resolve, r
       });
 
       publisher.on('failed', (err) => {
-        alert(err.message);
+        console.log(err.message);
       });
+    } catch (err) {
+      console.log(err?.message);
+    }
   });
 });

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
-import { relayInit, getEventHash, getBlankEvent, generatePrivateKey, getPublicKey, signEvent } from 'nostr-tools';
-import { initPool, getRootEvent, createRootEvent, getComments } from '../helpers/nostr';
+import { getRootEvent, createRootEvent, getComments } from '../helpers/nostr';
 
 export const RootContext = React.createContext({});
 
