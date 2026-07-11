@@ -25,6 +25,7 @@ class Frontend {
 	 */
 	public function __construct() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_script' ) );
+		add_filter( 'script_loader_tag', array( $this, 'add_defer_attribute' ), 10, 2 );
 
 		if ( $this->should_replace_comments() ) {
 			add_filter( 'comments_open', '__return_false', 10, 2 );
@@ -70,11 +71,23 @@ class Frontend {
 			$settings['script_url'],
 			array(),
 			DISGUS_VERSION,
-			array(
-				'in_footer' => true,
-				'strategy'  => 'defer',
-			)
+			true
 		);
+	}
+
+	/**
+	 * Add defer attribute to the Disgus script tag.
+	 *
+	 * @since 1.0.0
+	 * @param string $tag    Script tag HTML.
+	 * @param string $handle Script handle.
+	 * @return string
+	 */
+	public function add_defer_attribute( $tag, $handle ) {
+		if ( 'disgus' === $handle ) {
+			$tag = str_replace( '<script ', '<script defer ', $tag );
+		}
+		return $tag;
 	}
 
 	/**

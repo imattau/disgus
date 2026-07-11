@@ -20,6 +20,7 @@ Disgus replaces your WordPress comment system with comments backed by the Nostr 
 * Use a NIP-07 browser extension (e.g. Alby) to sign in, or post as a random guest.
 * Comments are stored on Nostr relays — you own your data.
 * Optional Gutenberg block and shortcode for manual placement.
+* Fully self-contained — no external CDN dependencies.
 * Styles are bundled inline — no extra CSS files to load.
 
 == Installation ==

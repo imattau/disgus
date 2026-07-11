@@ -23,6 +23,7 @@
 			"type": "string"
 		}
 	},
+	"textdomain": "disgus",
 	"render": "file:./render.php",
 	"editorScript": "file:./index.js"
 }

@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 define( 'DISGUS_VERSION', '0.1.0' );
 define( 'DISGUS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DISGUS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'DISGUS_SCRIPT_URL', 'https://unpkg.com/disgus@0.0.1-alpha.20' );
+define( 'DISGUS_SCRIPT_URL', DISGUS_PLUGIN_URL . 'assets/disgus.js' );
 
 spl_autoload_register(
 	function ( $class ) {
