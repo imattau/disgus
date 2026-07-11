@@ -49,8 +49,8 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve) =
         resolve(_comments);
         returned = true;
       }
-      sub.close();
-      pool.close(relays);
+      try { sub.close(); } catch (e) { /* ignore */ }
+      try { pool.close(relays); } catch (e) { /* ignore */ }
     }
   });
 });
@@ -90,8 +90,8 @@ export const getPubkey = (pubkey, relays) => new Promise((resolve) => {
       }
     },
     oneose() {
-      sub.close();
-      pool.close(relays);
+      try { sub.close(); } catch (e) { /* ignore */ }
+      try { pool.close(relays); } catch (e) { /* ignore */ }
     }
   });
 });
@@ -159,8 +159,8 @@ export const getRootEvent = (config) => new Promise((resolve) => {
         returned = true;
       },
       oneose() {
-        sub.close();
-        pool.close(relays);
+        try { sub.close(); } catch (e) { /* ignore */ }
+        try { pool.close(relays); } catch (e) { /* ignore */ }
       }
     });
     return;
@@ -179,8 +179,8 @@ export const getRootEvent = (config) => new Promise((resolve) => {
       returned = true;
     },
     oneose() {
-      sub.close();
-      pool.close(relays);
+      try { sub.close(); } catch (e) { /* ignore */ }
+      try { pool.close(relays); } catch (e) { /* ignore */ }
     }
   });
 });
