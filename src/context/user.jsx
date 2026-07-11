@@ -148,9 +148,9 @@ export function useUser() {
 
         const pool = new SimplePool();
         let okCount = 0;
-        relays.forEach((relayUrl) => {
-            const pub = pool.publish(relayUrl, signedEvent);
-            pub.on('ok', () => {
+        const pubs = pool.publish(relays, signedEvent);
+        pubs.forEach((p) => {
+            p.then(() => {
                 if (!user) {
                     const userData = {
                         pubkey,
@@ -165,8 +165,7 @@ export function useUser() {
                 if (okCount === relays.length) {
                     pool.close(relays);
                 }
-            });
-            pub.on('failed', (err) => {
+            }).catch((err) => {
                 console.log(err);
                 okCount++;
                 if (okCount === relays.length) {

@@ -19,40 +19,39 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve) =
     since = force ? 0 : cached.updated_at;
   }
 
-  const sub = pool.sub(relays, [{
+  const sub = pool.subscribe(relays, {
     limit: 100,
     kinds: [1],
     since,
     '#e': [rootEvent.id]
-  }]);
+  }, {
+    onevent(event) {
+      comments.push(event);
+      if (!localStorage.getItem(`e:${event.id}`)) {
+        localStorage.setItem(`e:${event.id}`, JSON.stringify(event));
+      }
+    },
+    oneose() {
+      if (returned) return;
 
-  sub.on('event', (event) => {
-    comments.push(event);
-    if (!localStorage.getItem(`e:${event.id}`)) {
-      localStorage.setItem(`e:${event.id}`, JSON.stringify(event));
+      const _comments = comments.filter((value, index, self) =>
+        index === self.findIndex((t) => t.id === value.id)
+      );
+      const now = Math.floor(Date.now() / 1000);
+
+      if (!cached?.updated_at || cached?.updated_at < now) {
+        localStorage.setItem(`e:${rootEvent.id}`, JSON.stringify({
+          ...cached,
+          updated_at: now,
+          comments: _comments
+        }));
+        cached.updated_at = now;
+        resolve(_comments);
+        returned = true;
+      }
+      sub.close();
+      pool.close(relays);
     }
-  });
-
-  sub.on('eose', () => {
-    if (returned) return;
-
-    const _comments = comments.filter((value, index, self) =>
-      index === self.findIndex((t) => t.id === value.id)
-    );
-    const now = Math.floor(Date.now() / 1000);
-
-    if (!cached?.updated_at || cached?.updated_at < now) {
-      localStorage.setItem(`e:${rootEvent.id}`, JSON.stringify({
-        ...cached,
-        updated_at: now,
-        comments: _comments
-      }));
-      cached.updated_at = now;
-      resolve(_comments);
-      returned = true;
-    }
-    sub.unsub();
-    pool.close(relays);
   });
 });
 
@@ -69,32 +68,31 @@ export const getPubkey = (pubkey, relays) => new Promise((resolve) => {
   }
 
   const pool = new SimplePool();
-  const sub = pool.sub(relays, [{
+  const sub = pool.subscribe(relays, {
     kinds: [0],
     authors: [pubkey]
-  }]);
-
-  sub.on('event', (_event) => {
-    if (returned) return;
-    if (!user.created_at || _event.created_at > user.created_at) {
-      try {
-        user = {
-          ...user,
-          ...JSON.parse(_event.content),
-          created_at: _event.created_at
-        };
-        localStorage.setItem(`p:${pubkey}`, JSON.stringify(user));
-        resolve(user);
-        returned = true;
-      } catch (e) {
-        // invalid JSON content
+  }, {
+    onevent(_event) {
+      if (returned) return;
+      if (!user.created_at || _event.created_at > user.created_at) {
+        try {
+          user = {
+            ...user,
+            ...JSON.parse(_event.content),
+            created_at: _event.created_at
+          };
+          localStorage.setItem(`p:${pubkey}`, JSON.stringify(user));
+          resolve(user);
+          returned = true;
+        } catch (e) {
+          // invalid JSON content
+        }
       }
+    },
+    oneose() {
+      sub.close();
+      pool.close(relays);
     }
-  });
-
-  sub.on('eose', () => {
-    sub.unsub();
-    pool.close(relays);
   });
 });
 
@@ -150,18 +148,20 @@ export const getRootEvent = (config) => new Promise((resolve) => {
   }
 
   const pool = new SimplePool();
+  let sub;
 
   if (event_id) {
-    const sub = pool.sub(relays, [{ ids: [event_id], kinds: [1], limit: 1 }]);
-    sub.on('event', (event) => {
-      if (returned) return;
-      localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
-      resolve(event);
-      returned = true;
-    });
-    sub.on('eose', () => {
-      sub.unsub();
-      pool.close(relays);
+    sub = pool.subscribe(relays, { ids: [event_id], kinds: [1], limit: 1 }, {
+      onevent(event) {
+        if (returned) return;
+        localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
+        resolve(event);
+        returned = true;
+      },
+      oneose() {
+        sub.close();
+        pool.close(relays);
+      }
     });
     return;
   }
@@ -171,16 +171,17 @@ export const getRootEvent = (config) => new Promise((resolve) => {
     filter['#p'] = [pubkey];
   }
 
-  const sub = pool.sub(relays, [{ limit: 1, kinds: [1], ...filter }]);
-  sub.on('event', (event) => {
-    if (returned) return;
-    localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
-    resolve(event);
-    returned = true;
-  });
-  sub.on('eose', () => {
-    sub.unsub();
-    pool.close(relays);
+  sub = pool.subscribe(relays, { limit: 1, kinds: [1], ...filter }, {
+    onevent(event) {
+      if (returned) return;
+      localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
+      resolve(event);
+      returned = true;
+    },
+    oneose() {
+      sub.close();
+      pool.close(relays);
+    }
   });
 });
 
@@ -217,21 +218,16 @@ export const postComment = (event, user, relays) => new Promise((resolve) => {
       return;
     }
 
-    relays.forEach((relayUrl) => {
-      try {
-        const pub = pool.publish(relayUrl, signedEvent);
-        pub.on('ok', () => {
-          if (!returned) {
-            resolve(signedEvent);
-            returned = true;
-          }
-        });
-        pub.on('failed', (err) => {
-          console.log(err);
-        });
-      } catch (err) {
-        console.log(err?.message);
-      }
+    const pubs = pool.publish(relays, signedEvent);
+    pubs.forEach((p) => {
+      p.then(() => {
+        if (!returned) {
+          resolve(signedEvent);
+          returned = true;
+        }
+      }).catch((err) => {
+        console.log(err);
+      });
     });
   })();
 });
