@@ -1,14 +1,9 @@
-import {relayInit, getEventHash, getBlankEvent, generatePrivateKey, getPublicKey, signEvent} from 'nostr-tools';
+import { SimplePool, finalizeEvent, getEventHash, generateSecretKey, getPublicKey } from 'nostr-tools';
+import { hexToBytes, bytesToHex } from 'nostr-passkey';
 
-export const initPool = (relays) => {
-  const pool = relays.map((relay) => relayInit(relay));
-
-  return pool;
-};
-
-export const getComments = (config, rootEvent, force) => new Promise((resolve, reject) => {
+export const getComments = (config, rootEvent, force) => new Promise((resolve) => {
   const { relays } = config;
-  const pool = initPool(relays);
+  const pool = new SimplePool();
   let comments = [];
   let since = 0;
   let cached = {};
@@ -16,7 +11,6 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
 
   if (localStorage.getItem(`e:${rootEvent.id}`)) {
     cached = JSON.parse(localStorage.getItem(`e:${rootEvent.id}`));
-
     comments = cached.comments;
     if (comments && !force) {
       resolve(comments);
@@ -25,104 +19,89 @@ export const getComments = (config, rootEvent, force) => new Promise((resolve, r
     since = force ? 0 : cached.updated_at;
   }
 
-  pool.map(async (conn) => {    
-    try {
-      await conn.connect()
-        
-      const sub = conn.sub([
-        {
-          limit: 100,
-          kinds: [1],
-          since,
-          '#e': [ rootEvent.id ]
-        }
-      ]);
+  const sub = pool.sub(relays, [{
+    limit: 100,
+    kinds: [1],
+    since,
+    '#e': [rootEvent.id]
+  }]);
 
-      sub.on('event', (event) => {
-        comments.push(event);
-        if (!localStorage.getItem(`e:${event.id}`)) {
-          localStorage.setItem(`e:${event.id}`, JSON.stringify(event));
-        }
-      });
-
-      sub.on('eose', () => {
-        if (returned) return;
-
-        const _comments = comments.filter((value, index, self) =>
-                        index === self.findIndex((t) => (
-                          t.id === value.id
-                        ))
-                      );
-        const now = Math.floor(new Date().getTime() / 1000);
-        
-        if (!cached?.updated_at || cached?.updated_at < now) {
-          localStorage.setItem(`e:${rootEvent.id}`, JSON.stringify({
-            ...cached,
-            updated_at: now,
-            comments: _comments
-          }));
-          cached.updated_at = now;
-          resolve(_comments);
-          returned = true;
-        }
-        sub.unsub();
-      });
-    } catch (err) {
-      console.log(err?.message);
+  sub.on('event', (event) => {
+    comments.push(event);
+    if (!localStorage.getItem(`e:${event.id}`)) {
+      localStorage.setItem(`e:${event.id}`, JSON.stringify(event));
     }
-  })
+  });
+
+  sub.on('eose', () => {
+    if (returned) return;
+
+    const _comments = comments.filter((value, index, self) =>
+      index === self.findIndex((t) => t.id === value.id)
+    );
+    const now = Math.floor(Date.now() / 1000);
+
+    if (!cached?.updated_at || cached?.updated_at < now) {
+      localStorage.setItem(`e:${rootEvent.id}`, JSON.stringify({
+        ...cached,
+        updated_at: now,
+        comments: _comments
+      }));
+      cached.updated_at = now;
+      resolve(_comments);
+      returned = true;
+    }
+    sub.unsub();
+    pool.close(relays);
+  });
 });
 
-export const getPubkey = (pubkey, relays) => new Promise((resolve, reject) => {
+export const getPubkey = (pubkey, relays) => new Promise((resolve) => {
   let user = { pubkey, created_at: 0 };
   let returned = false;
 
   if (localStorage.getItem(`p:${pubkey}`)) {
     user = JSON.parse(localStorage.getItem(`p:${pubkey}`));
-
     if (user.created_at > 0) {
       resolve(user);
       return;
     }
   }
 
-  const pool = initPool(relays);
-  
-  pool.map(async (conn) => {
-    await conn.connect();
-    const sub = conn.sub([
-      {
-        kinds: [0],
-        authors: [ pubkey ]
-      }
-    ]);
+  const pool = new SimplePool();
+  const sub = pool.sub(relays, [{
+    kinds: [0],
+    authors: [pubkey]
+  }]);
 
-    sub.on('event', (_event) => {
-      if (returned) return;
-
-      if (!user.created_at || _event.created_at > user.created_at) {
+  sub.on('event', (_event) => {
+    if (returned) return;
+    if (!user.created_at || _event.created_at > user.created_at) {
+      try {
         user = {
           ...user,
           ...JSON.parse(_event.content),
           created_at: _event.created_at
-        }
+        };
         localStorage.setItem(`p:${pubkey}`, JSON.stringify(user));
         resolve(user);
         returned = true;
+      } catch (e) {
+        // invalid JSON content
       }
-    });
+    }
+  });
 
-    sub.on('eose', () => {
-      sub.unsub();
-      conn.close();
-    });
+  sub.on('eose', () => {
+    sub.unsub();
+    pool.close(relays);
   });
 });
 
-export const createRootEvent = (config, user) => new Promise((resolve, reject) => {
+export const createRootEvent = (config) => new Promise((resolve) => {
   const { pubkey, title, description, canonical, relays } = config;
   const tags = [];
-  let content = title;
+  let content = title || '';
 
   if (pubkey) {
     tags.push(['p', pubkey]);
@@ -132,29 +111,30 @@ export const createRootEvent = (config, user) => new Promise((resolve, reject) =
   if (description) {
     content += `\n${description}`;
   }
-  
+
   content += `\nMore: ${canonical}\n\nComments powered by Disgus`;
 
   tags.push(['r', canonical]);
   tags.push(['client', 'Disgus']);
-  const event = {
+
+  const secretKey = generateSecretKey();
+  const signedEvent = finalizeEvent({
+    kind: 1,
     content,
-    tags
-  };
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+  }, secretKey);
 
-  const randomPrivate = generatePrivateKey();
-  const randomPubkey = getPublicKey(randomPrivate);
+  const user = { pubkey: getPublicKey(secretKey), privateKey: bytesToHex(secretKey) };
 
-  event.pubkey = randomPubkey;
-  postComment(event, { pubkey: randomPubkey, privateKey: randomPrivate }, relays).then((_event) => {
+  postComment(signedEvent, user, relays).then((_event) => {
     localStorage.setItem(`r:${canonical}`, JSON.stringify(_event));
     resolve(_event);
   });
 });
 
-export const getRootEvent = (config) => new Promise(async (resolve, reject) => {
+export const getRootEvent = (config) => new Promise((resolve) => {
   const { pubkey, canonical, relays, event_id } = config;
-  const pool = initPool(relays);
   let returned = false;
 
   if (event_id && localStorage.getItem(`e:${event_id}`)) {
@@ -169,104 +149,89 @@ export const getRootEvent = (config) => new Promise(async (resolve, reject) => {
     return;
   }
 
+  const pool = new SimplePool();
+
   if (event_id) {
-    pool.map(async (conn) => {
+    const sub = pool.sub(relays, [{ ids: [event_id], kinds: [1], limit: 1 }]);
+    sub.on('event', (event) => {
+      if (returned) return;
+      localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
+      resolve(event);
+      returned = true;
+    });
+    sub.on('eose', () => {
+      sub.unsub();
+      pool.close(relays);
+    });
+    return;
+  }
+
+  const filter = { '#r': [canonical] };
+  if (pubkey) {
+    filter['#p'] = [pubkey];
+  }
+
+  const sub = pool.sub(relays, [{ limit: 1, kinds: [1], ...filter }]);
+  sub.on('event', (event) => {
+    if (returned) return;
+    localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
+    resolve(event);
+    returned = true;
+  });
+  sub.on('eose', () => {
+    sub.unsub();
+    pool.close(relays);
+  });
+});
+
+export const postComment = (event, user, relays) => new Promise((resolve) => {
+  const pool = new SimplePool();
+  const now = Math.floor(Date.now() / 1000);
+  let returned = false;
+  let signedEvent;
+
+  (async () => {
+    if (user?.signer) {
+      signedEvent = await user.signer.signEvent({
+        kind: 1,
+        content: event.content,
+        tags: event.tags,
+        created_at: now,
+      });
+    } else if (user?.privateKey) {
+      signedEvent = finalizeEvent({
+        kind: 1,
+        content: event.content,
+        tags: event.tags,
+        created_at: now,
+      }, hexToBytes(user.privateKey));
+    } else if (window.nostr) {
+      event.kind = 1;
+      event.created_at = now;
+      event.id = getEventHash(event);
+      const { sig } = await window.nostr.signEvent(event);
+      event.sig = sig;
+      signedEvent = event;
+    } else {
+      alert('No signing method available. Install a NIP-07 extension or use a passkey.');
+      return;
+    }
+
+    relays.forEach((relayUrl) => {
       try {
-        await conn.connect();
-        const sub = conn.sub([{ ids: [event_id], kinds: [1], limit: 1 }]);
-
-        sub.on('event', (event) => {
-          if (returned) return;
-          localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
-          resolve(event);
-          returned = true;
+        const pub = pool.publish(relayUrl, signedEvent);
+        pub.on('ok', () => {
+          if (!returned) {
+            resolve(signedEvent);
+            returned = true;
+          }
         });
-
-        sub.on('eose', () => {
-          sub.unsub();
-          conn.close();
+        pub.on('failed', (err) => {
+          console.log(err);
         });
       } catch (err) {
         console.log(err?.message);
       }
     });
-    return;
-  }
-
-  const filter = { '#r': [ canonical ] };
-
-  if (pubkey) {
-    filter['#p'] = [ pubkey ];
-  }
-
-  pool.map(async (conn, i) => {
-    try {
-      await conn.connect();
-    
-      const sub = conn.sub([
-        {
-          limit: 1,
-          kinds: [1],
-          ...filter
-        }
-      ]);
-
-      sub.on('event', (event) => {
-        if (returned) return;
-        localStorage.setItem(`r:${canonical}`, JSON.stringify(event));
-        resolve(event);
-        returned = true;
-      });
-
-      sub.on('eose', () => {
-        sub.unsub();
-        conn.close();
-      });
-    } catch (err) {
-      console.log(err?.message);
-    }
-  });
-});
-
-export const postComment = (event, user, relays) => new Promise(async(resolve, reject) => {
-  const pool = initPool(relays);
-
-  event.kind = 1;
-  event.created_at = Math.floor(Date.now() / 1000);
-  event.id = getEventHash(event);
-
-  if (user && user.privateKey) {
-    event.sig = signEvent(event, user.privateKey);
-  } else {
-    if (window.nostr) {
-      const { sig } = await window.nostr.signEvent(event);
-
-      event.sig = sig;
-    } else {
-      const privateKey = prompt('Enter your private key', '');
-      event.sig = signEvent(event, user.privateKey);
-    }
-  }
-  
-  let returned = false;
-
-  pool.map(async (conn) => {
-    try {
-      await conn.connect();
-      const publisher = conn.publish(event);
-
-      publisher.on('seen', (_event) => {
-        if (!returned) {
-          resolve(event);
-          returned = true;
-        }
-      });
-
-      publisher.on('failed', (err) => {
-        console.log(err.message);
-      });
-    } catch (err) {
-      console.log(err?.message);
-    }
-  });
+  })();
 });
