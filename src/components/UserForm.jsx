@@ -75,7 +75,7 @@ export default function UserForm() {
                     </div>
                     ) : (
                     <div className="py-1">
-                        <Menu.Item key="passkey">
+                        <Menu.Item>
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); signInPasskey(); }}
@@ -88,7 +88,7 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <Menu.Item key="import">
+                        <Menu.Item>
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); importPasskeyFromNsec(); }}
@@ -101,8 +101,12 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <div key="divider" className="border-t border-gray-200 my-1" />
-                        <Menu.Item key="extension">
+                        <Menu.Item disabled>
+                        {({ active }) => (
+                            <div className="border-t border-gray-200 my-1" />
+                        )}
+                        </Menu.Item>
+                        <Menu.Item>
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); signInExtension(); }}
@@ -115,7 +119,7 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <Menu.Item key="key">
+                        <Menu.Item>
                         {({ active }) => (
                             <a
                             onClick={(e) => { e.preventDefault(); signInWithKey(); }}
@@ -128,7 +132,7 @@ export default function UserForm() {
                             </a>
                         )}
                         </Menu.Item>
-                        <Menu.Item key="rnd">
+                        <Menu.Item>
                         {({ active }) => (
                             <a
                             onClick={(e) => {e.preventDefault(); signInRandom(); }}
