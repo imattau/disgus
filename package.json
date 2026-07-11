@@ -15,11 +15,11 @@
     "url": "https://github.com/carlitoplatanito/disgus.git"
   },
   "homepage": "https://carlitoplatanito.com/demo",
-  "main": "dist/index.html",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "prepack": "yarn build"
+    "prepack": "pnpm build"
   },
   "files": [
     "dist"
