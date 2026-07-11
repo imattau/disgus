@@ -77,6 +77,16 @@ Offers NIP-07 for login or just type a name to post as a **Rando** (non-NIP05 ve
 | Canonical URL | Auto (og:url / link[rel=canonical] / location) | | `og:url` |
 | Title | Auto (og:title / document.title) | | `og:title` |
 
+## Development
+
+```sh
+npm run dev       # Vite dev server with HMR
+npm run build     # Build for production
+npm run preview   # Serve the built demo via HTTP (open http://localhost:4173)
+```
+
+The demo page at `/dist/index.html` uses the built `<disgus-comments>` web component and works from `file://` or any HTTP server.
+
 ## Work In Progress
 
 More features coming -- open a ticket, pull request or hit me on Nostr (_@carlitoplatanito.com)
