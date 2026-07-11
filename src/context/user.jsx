@@ -47,29 +47,29 @@ export function useUser() {
     const { relays } = config;
     const { user, setUser, passkeyAvailable, setPasskeyAvailable } = useContext(UserContext);
 
-    const signIn = () => {
+    const finishSignIn = (_user) => {
+        localStorage.setItem(cacheKey, JSON.stringify({ pubkey: _user.pubkey }));
+        getPubkey(_user.pubkey, relays).then((profile) => {
+            const merged = { ..._user, ...profile, pubkey: _user.pubkey };
+            localStorage.setItem(cacheKey, JSON.stringify(merged));
+            setUser(merged);
+        });
+    };
+
+    const signInExtension = () => {
+        if (user || !window.nostr) return;
+        window.nostr.getPublicKey().then((pubkey) => finishSignIn({ pubkey }));
+    };
+
+    const signInWithKey = () => {
         if (user) return;
-
-        const finish = (_user) => {
-            localStorage.setItem(cacheKey, JSON.stringify({ pubkey: _user.pubkey }));
-            getPubkey(_user.pubkey, relays).then((profile) => {
-                const merged = { ..._user, ...profile, pubkey: _user.pubkey };
-                localStorage.setItem(cacheKey, JSON.stringify(merged));
-                setUser(merged);
-            });
-        };
-
-        if (window.nostr) {
-            window.nostr.getPublicKey().then((pubkey) => finish({ pubkey }));
+        const privateKey = prompt('Enter your private key (hex):', '');
+        if (!privateKey) return;
+        const pubkey = getPublicKey(hexToBytes(privateKey));
+        if (pubkey) {
+            finishSignIn({ pubkey, privateKey });
         } else {
-            const privateKey = prompt('Enter your private key', '');
-            const pubkey = getPublicKey(hexToBytes(privateKey));
-
-            if (pubkey) {
-                finish({ pubkey, privateKey });
-            } else {
-                alert('Incorrect key.');
-            }
+            alert('Incorrect key.');
         }
     };
 
@@ -186,7 +186,9 @@ export function useUser() {
 
     return {
         user,
-        signIn,
+        extensionAvailable: !!window.nostr,
+        signInExtension,
+        signInWithKey,
         signInPasskey,
         importPasskeyFromNsec,
         exportPasskeyNsec,
