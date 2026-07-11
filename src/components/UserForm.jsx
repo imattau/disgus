@@ -75,21 +75,6 @@ export default function UserForm() {
                     </div>
                     ) : (
                     <div className="py-1">
-                        {extensionAvailable && (
-                        <Menu.Item>
-                            {({ active }) => (
-                            <a
-                                onClick={(e) => { e.preventDefault(); signInExtension(); }}
-                                className={classNames(
-                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
-                                    'block px-4 py-2 text-sm'
-                                )}
-                            >
-                                Extension (NIP-07)
-                            </a>
-                            )}
-                        </Menu.Item>
-                        )}
                         <Menu.Item>
                         {({ active }) => (
                             <a
@@ -117,21 +102,34 @@ export default function UserForm() {
                         )}
                         </Menu.Item>
                         <div className="border-t border-gray-200 my-1" />
-                        {!extensionAvailable && (
+                        {extensionAvailable && (
                         <Menu.Item>
                             {({ active }) => (
                             <a
-                                onClick={(e) => { e.preventDefault(); signInWithKey(); }}
+                                onClick={(e) => { e.preventDefault(); signInExtension(); }}
                                 className={classNames(
                                     active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
                                     'block px-4 py-2 text-sm'
                                 )}
                             >
-                                Private Key
+                                Extension (NIP-07)
                             </a>
                             )}
                         </Menu.Item>
                         )}
+                        <Menu.Item>
+                        {({ active }) => (
+                            <a
+                            onClick={(e) => { e.preventDefault(); signInWithKey(); }}
+                            className={classNames(
+                                active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                'block px-4 py-2 text-sm'
+                            )}
+                            >
+                            Private Key
+                            </a>
+                        )}
+                        </Menu.Item>
                         <Menu.Item>
                         {({ active }) => (
                             <a
