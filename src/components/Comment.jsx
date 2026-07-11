@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { formatDate } from "../helpers/utils";
 import { getPubkey } from '../helpers/nostr';
 import { CheckBadgeIcon, ShieldExclamationIcon, ArrowUturnDownIcon, MinusIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/solid';
-import { ClockIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, HandThumbUpIcon, HandThumbDownIcon } from '@heroicons/react/24/outline'
 import { useRoot } from '../context/root';
 
 export default function Comment({ comment }) {
