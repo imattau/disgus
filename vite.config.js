@@ -8,8 +8,8 @@ export default defineConfig({
       output: {
         format: 'iife',
         name: 'Disgus',
-        entryFileNames: '[name].[hash].js',
-        assetFileNames: '[name].[hash][extname]'
+        entryFileNames: '[name].js',
+        assetFileNames: '[name][extname]'
       }
     },
     cssCodeSplit: false,

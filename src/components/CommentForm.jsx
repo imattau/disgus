@@ -58,7 +58,7 @@ export default function CommentForm() {
                 id="comment"
                 placeholder="Join the discussion..."
                 value={comment}
-                rows={focused || comment.length > 0 ? 3 : 1}
+                rows={3}
                 onChange={(e) => {
                     setComment(e.target.value);
                 }}
