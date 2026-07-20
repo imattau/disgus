@@ -1,3 +1,9 @@
+/*
+ * Disgus — Comments on Nostr
+ * Originally created by Carlito Platanito (https://github.com/carlitoplatanito)
+ * Forked and maintained by 0xx0lostcause0xx0
+ */
+
 import Comment from './components/Comment';
 import CommentForm from './components/CommentForm';
 import UserForm from './components/UserForm';

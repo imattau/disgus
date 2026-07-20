@@ -5,6 +5,9 @@
   "author": {
     "name": "0xx0lostcause0xx0"
   },
+  "contributors": [
+    "Carlito Platanito (https://github.com/carlitoplatanito)"
+  ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
     "access": "public"
