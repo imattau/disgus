@@ -1,20 +1,18 @@
 {
   "name": "disgus",
-  "version": "0.0.1-alpha.20",
+  "version": "0.0.1-alpha.21",
   "license": "GPL-2.0-or-later",
   "author": {
-    "name": "Carlito Platanito",
-    "email": "carlitoplatanito@gmail.com",
-    "url": "https://carlitoplatanito.com"
+    "name": "0xx0lostcause0xx0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
     "access": "public"
   },
   "repository": {
-    "url": "https://github.com/carlitoplatanito/disgus.git"
+    "url": "https://github.com/imattau/disgus.git"
   },
-  "homepage": "https://carlitoplatanito.com/demo",
+  "homepage": "https://github.com/imattau/disgus",
   "main": "dist/index.js",
   "scripts": {
     "dev": "vite",
