@@ -7,15 +7,17 @@ jobs:
   prodDeploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-#     - run: sudo apt-get install -y make rsync zip
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'yarn'
+          cache: 'pnpm'
       - name: Install Deps
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Build
-        run: yarn build
+        run: pnpm build
 #      - name: Release
 #        run: yarn version minor && yarn release
