@@ -11,7 +11,7 @@ jobs:
 #     - run: sudo apt-get install -y make rsync zip
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 22
           cache: 'yarn'
       - name: Install Deps
         run: yarn install --frozen-lockfile
